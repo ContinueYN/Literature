@@ -5,6 +5,9 @@
 
 name: Build APK & IPA
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
