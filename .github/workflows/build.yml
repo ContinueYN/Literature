@@ -1,0 +1,98 @@
+# 完全免费的 GitHub Actions 双端构建
+# 触发：push 到 main 分支，或手动在 Actions 页点 Run workflow
+# 安卓在 ubuntu 免费 runner 上编译（免签名 debug APK）；iOS 在 macos 免费 runner 上编译（需 Apple 开发者签名）
+# 产物在 Actions 页面的 Artifacts 里下载。
+
+name: Build APK & IPA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # ===================== Android（免费、免签名）=====================
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 安装前端依赖
+        run: npm install
+      - name: 同步 Web 资源到原生工程
+        run: npx cap sync android
+      - name: 构建 debug APK（无需签名）
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+      - name: 上传 APK 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: android/app/build/outputs/**/*.apk
+
+  # ===================== iOS（需 Apple 开发者签名）=====================
+  ios:
+    name: iOS IPA
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 安装前端依赖
+        run: npm install
+      - name: 同步 Web 资源到原生工程
+        run: npx cap sync ios
+      - name: 安装 CocoaPods 依赖
+        run: cd ios/App && pod install
+      - name: 导入签名证书与描述文件
+        env:
+          CERTIFICATE_P12: ${{ secrets.IOS_CERTIFICATE_P12 }}       # base64 编码的 .p12
+          PROVISIONING_PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE }} # base64 编码的 .mobileprovision
+          KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+          TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+          PROFILE_NAME: ${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}
+        run: |
+          echo "$CERTIFICATE_P12" | base64 --decode > cert.p12
+          echo "$PROVISIONING_PROFILE" | base64 --decode > profile.mobileprovision
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security import cert.p12 -k build.keychain -P "$KEYCHAIN_PASSWORD" -T /usr/bin/codesign
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp profile.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/"
+          # 生成 exportOptions.plist（ad-hoc 分发）
+          cat > exportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>ad-hoc</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>provisioningProfiles</key><dict>
+              <key>com.moyue.literature</key><string>$PROFILE_NAME</string>
+            </dict>
+          </dict></plist>
+          EOF
+      - name: 构建并导出 IPA
+        env:
+          TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+          PROFILE_NAME: ${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}
+        run: |
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
+            -archivePath build/App.xcarchive \
+            CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=$TEAM_ID \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" archive
+          xcodebuild -exportArchive -archivePath build/App.xcarchive \
+            -exportOptionsPlist ../../exportOptions.plist -exportPath build/ios/ipa
+      - name: 上传 IPA 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-ipa
+          path: ios/App/build/ios/ipa/*.ipa

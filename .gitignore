@@ -1,0 +1,20 @@
+# Node / 前端
+node_modules/
+dist/
+*.local
+
+# Capacitor 原生构建产物（云端会从源码重新生成）
+android/.gradle/
+android/app/build/
+android/local.properties
+ios/App/build/
+ios/App/Pods/
+ios/App/Podfile.lock
+ios/App/App/public/
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/

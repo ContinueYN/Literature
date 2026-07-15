@@ -1,0 +1,61 @@
+# Codemagic 云端双端构建配置
+# 作用：把代码推到 GitHub 后，在 Codemagic 点一下即可同时产出 Android APK 和 iOS IPA。
+# 说明：构建在 Codemagic 的云端 Mac / Linux 机器上进行；本应用运行时不联网、完全离线。
+# 文档详见 docs/CloudBuild.md
+
+workflows:
+  # ---------- Android：产出可直接安装的 debug.apk（无需签名）----------
+  android-build:
+    name: Android APK
+    instance_type: linux
+    max_build_duration: 30
+    environment:
+      node: "20"
+    scripts:
+      - name: 安装前端依赖
+        script: npm install
+      - name: 同步 Web 资源到原生工程
+        script: npx cap sync android
+      - name: 构建 APK（debug，免签名）
+        script: cd android && ./gradlew assembleDebug
+    artifacts:
+      - android/app/build/outputs/**/*.apk
+    publishing:
+      email:
+        recipients:
+          - user@example.com
+
+  # ---------- iOS：产出可在真机安装的 IPA（需 Apple 开发者账号签名）----------
+  ios-build:
+    name: iOS IPA
+    instance_type: mac_mini_m1
+    max_build_duration: 60
+    environment:
+      node: "20"
+      xcode: latest
+      cocoapods: default
+      # ↓↓↓ 在 Codemagic 网页里连接你的 Apple 开发者账号后自动生效 ↓↓↓
+      ios_signing:
+        distribution_type: ad_hoc          # 直接发到手机安装（需在开发者后台登记设备 UDID）
+        bundle_identifier: com.moyue.literature
+    scripts:
+      - name: 安装前端依赖
+        script: npm install
+      - name: 同步 Web 资源到原生工程
+        script: npx cap sync ios
+      - name: 安装 CocoaPods 依赖
+        script: cd ios/App && pod install
+      - name: 配置代码签名
+        script: xcode-project use-profiles
+      - name: 构建 IPA
+        script: |
+          cd ios/App
+          xcodebuild build -workspace App.xcworkspace -scheme App -configuration Release -archivePath build/App.xcarchive CODE_SIGN_STYLE=Manual | xcpretty
+          xcodebuild -exportArchive -archivePath build/App.xcarchive -exportOptionsPlist exportOptions.plist -exportPath build/ios/ipa | xcpretty
+    artifacts:
+      - ios/App/build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      email:
+        recipients:
+          - user@example.com
