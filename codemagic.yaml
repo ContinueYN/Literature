@@ -11,6 +11,7 @@ workflows:
     max_build_duration: 30
     environment:
       node: "20"
+      java: "17"
     scripts:
       - name: 安装前端依赖
         script: npm install
@@ -28,7 +29,7 @@ workflows:
   # ---------- iOS：产出可在真机安装的 IPA（需 Apple 开发者账号签名）----------
   ios-build:
     name: iOS IPA
-    instance_type: mac_mini_m1
+    instance_type: mac_mini
     max_build_duration: 60
     environment:
       node: "20"
