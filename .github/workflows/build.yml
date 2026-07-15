@@ -37,10 +37,13 @@ jobs:
           name: app-debug-apk
           path: android/app/build/outputs/**/*.apk
 
-  # ===================== iOS（需 Apple 开发者签名）=====================
+  # ===================== iOS（需 Apple 开发者签名，可选）=====================
+  # 只有当你在仓库 Settings ▸ Secrets 里配置了 IOS_CERTIFICATE_P12 等 5 个密钥时才会运行；
+  # 未配置则自动跳过，不影响安卓 APK 的正常产出（workflow 整体显示绿色）。
   ios:
     name: iOS IPA
     runs-on: macos-latest
+    if: ${{ secrets.IOS_CERTIFICATE_P12 != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
