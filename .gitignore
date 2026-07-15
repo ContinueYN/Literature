@@ -18,3 +18,6 @@ Thumbs.db
 *.log
 .vscode/
 .idea/
+
+# 本地交付副本（已生成的 APK，仅本机使用）
+dist-apk/
