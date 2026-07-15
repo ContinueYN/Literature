@@ -22,6 +22,8 @@ jobs:
           node-version: 20
       - name: 安装前端依赖
         run: npm install
+      - name: 构建网页资源（生成 dist）
+        run: npm run build
       - name: 同步 Web 资源到原生工程
         run: npx cap sync android
       - name: 构建 debug APK（无需签名）
@@ -46,6 +48,8 @@ jobs:
           node-version: 20
       - name: 安装前端依赖
         run: npm install
+      - name: 构建网页资源（生成 dist）
+        run: npm run build
       - name: 同步 Web 资源到原生工程
         run: npx cap sync ios
       - name: 安装 CocoaPods 依赖
