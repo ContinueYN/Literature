@@ -55,12 +55,12 @@
 
 ---
 
-## 备选:GitHub Actions(完全免费,但配置更手工)
-若不想用 Codemagic,也可改用 GitHub Actions:
-- Android 用 `ubuntu` runner + `gradlew assembleDebug`;
-- iOS 用 `macos` runner + `npx cap sync ios` + `xcodebuild`,签名证书存到仓库 Secrets。
+## 备选:GitHub Actions(完全免费)
+若不想用 Codemagic,工程里已内置 **`.github/workflows/build.yml`**,推到 GitHub 后开启 Actions 即可:
+- Android 走 `ubuntu` 免费 runner,`gradlew assembleDebug` 出免签名 APK,产物在 Artifacts 下载;
+- iOS 走 `macos` 免费 runner,需先在仓库 `Settings ▸ Secrets` 里配置 5 个密钥:`IOS_CERTIFICATE_P12`、`IOS_PROVISIONING_PROFILE`、`IOS_KEYCHAIN_PASSWORD`、`IOS_TEAM_ID`、`IOS_PROVISIONING_PROFILE_NAME`(均为 Apple 开发者账号导出),workflow 会自动导入并导出 IPA。
 
-Codemagic 对 Capacitor 支持最顺手,新手推荐它。需要的话我可以再补一份 `github-actions` 工作流文件。
+Codemagic 对 Capacitor 支持最顺手、签名配置最省心,新手推荐它;GitHub Actions 胜在完全免费、代码不进第三方平台。
 
 ---
 
